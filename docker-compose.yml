@@ -1,0 +1,48 @@
+version: "3"
+
+services:
+  web:
+    build: .
+    volumes:
+      - .:$PWD:cached
+      - "~/.ssh:/home/app/.ssh"
+      - "~/.aws:/home/app/.aws"
+      - "~/.gitconfig:/home/app/.gitconfig"
+      # All .doker contained directories and files are mounted in order to prevent index check, version check and recompilation
+      # everytime user get into new container.
+      - "./.docker:/home/app/.cargo"
+      - "./.docker:/home/app/.cache"
+      - "./.docker/cargo-make:/home/app/.config"
+      - "./.docker:/home/app/target-docker"
+    security_opt:
+      - seccomp:unconfined
+    ports:
+      - "3102:3102"
+    working_dir: $PWD
+    depends_on:
+      - rabbit
+      - jaeger
+    environment:
+      BUILD_ENV: dev
+      CARGO_HOME: /home/app/.cargo
+      CARGO_TARGET_DIR: /home/app/target-docker
+    networks:
+      - default
+  
+  rabbit:
+    image: rabbitmq:3.7.4-management
+    ports:
+      - 15672:15672
+      - 5672:5672
+    environment:
+      RABBITMQ_DEFAULT_VHOST: lira
+      RABBITMQ_DEFAULT_USER: lira
+      RABBITMQ_DEFAULT_PASS: lira
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.27
+    environment:
+      COLLECTOR_ZIPKIN_HOST_PORT: 9411
+    ports:
+      - 16686:16686
+      - 9411:9411
