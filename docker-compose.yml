@@ -8,7 +8,7 @@ services:
       - "~/.ssh:/home/app/.ssh"
       - "~/.aws:/home/app/.aws"
       - "~/.gitconfig:/home/app/.gitconfig"
-      # All .doker contained directories and files are mounted in order to prevent index check, version check and recompilation
+      # All .docker contained directories and files are mounted in order to prevent index check, version check and recompilation
       # everytime user get into new container.
       - "./.docker:/home/app/.cargo"
       - "./.docker:/home/app/.cache"
@@ -28,7 +28,7 @@ services:
       CARGO_TARGET_DIR: /home/app/target-docker
     networks:
       - default
-  
+
   rabbit:
     image: rabbitmq:3.7.4-management
     ports:

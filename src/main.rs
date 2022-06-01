@@ -1,11 +1,11 @@
-use futures_lite::StreamExt;
 use lapin::{
-    options::{BasicAckOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions},
+    options::{BasicPublishOptions, QueueDeclareOptions},
     publisher_confirm::Confirmation,
-    types::FieldTable,
+    types::{AMQPValue, FieldTable},
     BasicProperties, Connection, ConnectionProperties,
 };
 use prima_tracing::{builder, configure_subscriber, init_subscriber};
+use rustic_telemetry_rabbit::consumer;
 use tracing::{info, info_span};
 
 #[tokio::main]
@@ -26,7 +26,7 @@ async fn main() {
 
     let _guard = init_subscriber(subscriber);
 
-    let span = info_span!("MySpan");
+    let span = info_span!("Main");
     let _guard = span.enter();
 
     info!("Starting my awesome app");
@@ -41,7 +41,6 @@ async fn main() {
     info!("CONNECTED");
 
     let channel_a = conn.create_channel().await.unwrap();
-    let channel_b = conn.create_channel().await.unwrap();
 
     let queue = channel_a
         .queue_declare(
@@ -54,25 +53,15 @@ async fn main() {
 
     info!(?queue, "Declared queue");
 
-    let mut consumer = channel_b
-        .basic_consume(
-            "hello",
-            "my_consumer",
-            BasicConsumeOptions::default(),
-            FieldTable::default(),
-        )
-        .await
-        .unwrap();
-
-    tokio::spawn(async move {
-        info!("will consume");
-        while let Some(delivery) = consumer.next().await {
-            let delivery = delivery.expect("error in consumer");
-            delivery.ack(BasicAckOptions::default()).await.expect("ack");
-        }
-    });
+    consumer::start_consumer(&span, &conn).await;
 
     let payload = b"Hello world!";
+
+    let mut headers = FieldTable::default();
+    headers.insert(
+        "Test".into(),
+        AMQPValue::LongString("Alessandro Dalfovo".into()),
+    );
 
     let confirm = channel_a
         .basic_publish(
@@ -80,11 +69,12 @@ async fn main() {
             "hello",
             BasicPublishOptions::default(),
             payload,
-            BasicProperties::default(),
+            BasicProperties::default().with_headers(headers),
         )
         .await
         .unwrap()
         .await
         .unwrap();
+
     assert_eq!(confirm, Confirmation::NotRequested);
 }
