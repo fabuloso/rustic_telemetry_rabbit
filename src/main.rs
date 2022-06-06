@@ -1,11 +1,12 @@
 use lapin::{
     options::{BasicPublishOptions, QueueDeclareOptions},
-    publisher_confirm::Confirmation,
     types::{AMQPValue, FieldTable},
     BasicProperties, Connection, ConnectionProperties,
 };
 use prima_tracing::{builder, configure_subscriber, init_subscriber};
 use rustic_telemetry_rabbit::consumer;
+use std::thread::sleep;
+use std::time::Duration;
 use tracing::{info, info_span};
 
 #[tokio::main]
@@ -53,17 +54,17 @@ async fn main() {
 
     info!(?queue, "Declared queue");
 
-    consumer::start_consumer(&span, &conn).await;
+    consumer::start_consumer(&conn).await;
 
     let payload = b"Hello world!";
 
     let mut headers = FieldTable::default();
     headers.insert(
-        "Test".into(),
-        AMQPValue::LongString("Alessandro Dalfovo".into()),
+        "x-span-id".into(),
+        AMQPValue::LongLongInt((span.id().unwrap().into_u64() as i64).into()),
     );
 
-    let confirm = channel_a
+    channel_a
         .basic_publish(
             "",
             "hello",
@@ -76,5 +77,5 @@ async fn main() {
         .await
         .unwrap();
 
-    assert_eq!(confirm, Confirmation::NotRequested);
+    sleep(Duration::from_secs(2));
 }
