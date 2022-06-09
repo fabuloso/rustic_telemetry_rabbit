@@ -40,9 +40,7 @@ services:
       RABBITMQ_DEFAULT_PASS: lira
 
   jaeger:
-    image: jaegertracing/all-in-one:1.27
-    environment:
-      COLLECTOR_ZIPKIN_HOST_PORT: 9411
+    image: jaegertracing/opentelemetry-all-in-one:latest
     ports:
       - 16686:16686
-      - 9411:9411
+      - 55681:55681
